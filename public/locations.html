@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Locations</title>
+</head>
+<body>
+    <h1>Locations</h1>
+    <table id="locationsTable">
+        <thead>
+            <tr>
+                <th>Location ID</th>
+                <th>Name</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Locations will be loaded here -->
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchLocations();
+        });
+
+        function fetchLocations() {
+            fetch('/api/getLocations')
+            .then(response => response.json())
+            .then(locations => {
+                const tableBody = document.getElementById('locationsTable').getElementsByTagName('tbody')[0];
+                locations.forEach(location => {
+                    let row = tableBody.insertRow();
+                    ['id', 'name', 'latitude', 'longitude'].forEach(field => {
+                        let cell = row.insertCell();
+                        let input = document.createElement('input');
+                        input.name = field;
+                        input.value = location[field];
+                        input.disabled = (field === 'id');
+                        cell.appendChild(input);
+                    });
+
+                    let actionCell = row.insertCell();
+                    let saveButton = createButton('Save', () => saveLocation(location.id, row));
+                    actionCell.appendChild(saveButton);
+                });
+            })
+            .catch(error => console.error('Error fetching locations:', error));
+        }
+
+        function saveLocation(locationId, row) {
+            let locationData = {};
+            let isValid = true;
+            let inputs = row.getElementsByTagName('input');
+
+            Array.from(inputs).forEach(input => {
+                if (input.name !== 'locationID' && input.value.trim() === '') {
+                    isValid = false;
+                    alert('Please fill out all fields');
+                    return;
+                }
+                locationData[input.name] = input.value;
+            });
+
+            if (!isValid) return;
+
+            fetch('/api/updateLocation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ locationId, ...locationData })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Location updated successfully');
+                } else {
+                    response.text().then(text => {
+                        alert(`Error updating location: ${text}`);
+                    });
+                }
+            })
+            .catch(error => console.error('Error saving location:', error));
+        }
+
+        function createButton(text, onClick) {
+            let button = document.createElement('button');
+            button.textContent = text;
+            button.onclick = onClick;
+            return button;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Save Text to List</title>
+    <style>
+        li {
+            margin-bottom: 5px;
+        }
+
+        button.removeBtn {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Create Message Group</h1>
+
+    <label for="textInput">Username</label>
+    <input type="text" id="textInput">
+
+    <button onclick="saveText()">Add User</button>
+    <button onclick="createMessageGroup()">Create group</button>
+
+    <ul id="textList"></ul>
+
+    <script>
+        let users = [];
+    function saveText() {
+        var inputValue = document.getElementById('textInput').value;
+
+
+        fetch('/api/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            javascript: true,
+            searchValue: inputValue
+        })
+        }).then(async response => {
+
+        if (response.ok) {
+            json = await response.json();
+            if (json.userExists) {
+                if (inputValue.trim() !== '') {
+                    var listItem = document.createElement('li');
+                    users.push(inputValue);
+                    listItem.textContent = inputValue;
+    
+                    // Create a "Remove" button
+                    var removeButton = document.createElement('button');
+                    removeButton.textContent = 'Remove';
+                    removeButton.className = 'removeBtn';
+                    removeButton.onclick = function () {
+                        // Remove the parent li when the "Remove" button is clicked
+                        listItem.remove();
+                    };
+    
+                    // Append the "Remove" button to the list item
+                    listItem.appendChild(removeButton);
+    
+                    document.getElementById('textList').appendChild(listItem);
+    
+                    document.getElementById('textInput').value = '';
+                }
+            } else {
+                alert("Username does not exist");
+            }
+        } else {
+            throw new Error(`Server threw ${response.statusText}`);
+        }
+    })};
+    function createMessageGroup() {
+        const name = prompt("Please enter a group name");
+        if (name != null) {
+        fetch('/api/createMessageGroup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                javascript: true,
+                users: users,
+                groupName: name,
+            })
+        }).then(async response => {
+            if (response.ok) {
+                json = await response.json();
+                window.location.href = '/messageGroup.html?chatid=' + json.groupID;
+            } else {
+                throw new Error(`Server threw ${response.statusText}`);
+            }
+        }) }
+    };      
+            
+    </script>
+
+</body>
+</html>

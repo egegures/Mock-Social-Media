@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head> 
+    <title> Messages </title>
+</head>
+
+<body>
+    <h1>Messages</h1>
+    <div> <label for="searchInput">Chat with user: </label>
+    <input type="text" id="searchInput">
+    <button onclick="chatUser()">Chat</button> </div>
+    <button onclick="createGroup()">Create new group</button>
+    <!-- List of message groups -->
+    <div id="message-groups">
+        <ul id="message-groups-list">
+            <!-- Message groups will be dynamically loaded here -->
+        </ul>
+    </div>
+</body>
+</html>
+
+<script> 
+
+    addEventListener('DOMContentLoaded', () => {
+        fetch('/api/getMessageGroups', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true
+                })
+            }
+        ).then(async response => {
+            if (response.ok) {
+                json = await response.json();
+                var messageGroupsContainer = document.getElementById('message-groups-list');
+                while (messageGroupsContainer.firstChild) {
+                    messageGroupsContainer.removeChild(messageGroupsContainer.firstChild);
+                }
+                for (var i = 0; i < json.groupsID.length; i++) {
+                    var messageGroup = document.createElement('li');
+                    messageGroup.innerHTML = `<a href="/messageGroup.html?chatid=${json.groupsID[i]}">${json.groupsName[i]}</a>`;
+                    messageGroupsContainer.appendChild(messageGroup);
+                }
+            } else {
+                throw new Error(`Server threw ${response.statusText}`);
+            }
+        }).catch(error => {
+            console.error(error);
+        }
+        )
+    });
+    function chatUser() {
+        var searchedUser = document.getElementById('searchInput').value;
+        var messageGroupsContainer = document.getElementById('message-groups-list');
+        fetch('/api/getChat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                javascript: true,
+                searchedUser: searchedUser
+            })
+        }).then(async response => {
+            messageGroupsContainer.textContent = ''; // Clear previous results
+
+            if (response.ok) {
+                json = await response.json();
+                if (json.userExists) {
+                    if (json.sender === json.receiver) {
+                        messageGroupsContainer.textContent = "You cannot message yourself"; } 
+                        else {
+                            window.location.href = '/messageGroup.html?chatid=' + json.groupID;
+                        }
+                } 
+                    else {
+                    messageGroupsContainer.textContent = "User with that username does not exist";
+                }
+            } else {
+                messageGroupsContainer.textContent = "Server threw an error";
+                throw new Error(`Server threw ${response.statusText}`);
+            }
+            }).catch(error => {
+                console.error(error);
+            });
+        }
+
+        function createGroup() {
+            window.location.href = '/createGroup.html';
+        }
+</script>

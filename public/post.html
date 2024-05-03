@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Post</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        body {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            margin: 0 8px;
+            overflow: hidden;
+        }
+
+        #navbar {
+            overflow: hidden;
+        }
+
+        #container {
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        #post-and-actions {
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: auto 1fr auto auto;
+        }
+
+        #post-container {
+            overflow: auto;
+        }
+
+        #post-container img,
+        #post-container video {
+            padding: 1.5em 0;
+            width: calc(100% - 4px);
+            border: 2px solid black;
+        }
+
+        /*Action buttons are hidden by default. Javascript will show only the relevant buttons.*/
+        #action-container input[type=button] {
+            display: none;
+        }
+
+        #comments-and-box {
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: 1fr auto;
+        }
+
+        #comments-container {
+            overflow: auto;
+        }
+
+        #comment-box-container {
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1fr auto;
+        }
+
+        #comment-box {
+            height: 2em;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="navbar">
+        <a href="/feed.html">Home</a>
+        <a href="/user.html">Profile</a>
+        <a href="/newPost.html">New post</a>
+        <a href="/ads.html">Manage ads</a>
+        <a href="/messaging.html">Messaging</a>
+        <a href="/settings.html">Settings</a>
+        <a href="/productCategories.html">Product listings</a>
+        <a href="/search.html">Search</a>
+        <a href="/api/logout">Log out</a>
+    </div>
+    <div id="container">
+        <div id="post-and-actions">
+            <div id="info-container"></div>
+            <div id="post-container"></div>
+            <div id="caption-container"></div>
+            <div id="action-container">
+                <input type="button" id="like-button" value="Like">
+                <input type="button" id="edit-caption-button" value="Edit caption">
+                <input type="button" id="edit-location-button" value="Edit location">
+                <input type="button" id="edit-title-button" value="Edit title">
+                <input type="button" id="edit-price-button" value="Edit price">
+                <input type="button" id="invite-collaborator-button" value="Invite collaborator">
+                <input type="button" id="remove-collaborator-button" value="Remove collaborator status">
+                <input type="button" id="delete-button" value="Delete">
+                <input type="button" id="reply-button" value="Reply">
+            </div>
+        </div>
+        <div id="comments-and-box">
+            <div id="comments-container"></div>
+            <div id="comment-box-container">
+                <textarea id="comment-box" placeholder="Comment"></textarea>
+                <input type="button" id="comment-submit-button" value="Submit">
+            </div>
+        </div>
+    </div>
+    <script src="/lib.js"></script>
+    <script>
+        let loggedIn = getOwnUserID() !== undefined;
+
+        let postID = location.href.split('?id=')[1];
+        if (postID === undefined) {
+            alert('No post specified');
+            location.replace('/index.html');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const infoContainer = document.getElementById('info-container');
+            const postContainer = document.getElementById('post-container');
+            const captionContainer = document.getElementById('caption-container');
+
+            const likeButton = document.getElementById('like-button');
+            const editCaptionButton = document.getElementById('edit-caption-button');
+            const editLocationButton = document.getElementById('edit-location-button');
+            const editTitleButton = document.getElementById('edit-title-button');
+            const editPriceButton = document.getElementById('edit-price-button');
+            const inviteCollaboratorButton = document.getElementById('invite-collaborator-button');
+            const removeCollaboratorButton = document.getElementById('remove-collaborator-button');
+            const deleteButton = document.getElementById('delete-button');
+            const replyButton = document.getElementById('reply-button');
+
+            const commentsContainer = document.getElementById('comments-container');
+            const commentBox = document.getElementById('comment-box');
+            const commentSubmitButton = document.getElementById('comment-submit-button');
+
+            // Button handlers assume that the button is relevant, because they are hidden by default and shown later if they are.
+            function likeButtonHandler(event) {
+                alert('Not implemented');
+            }
+            function editCaptionButtonHandler(event) {
+                alert('Not implemented');
+            }
+            function editLocationButtonHandler(event) {
+                alert('Not implemented');
+            }
+            function editTitleButtonHandler(event) {
+                alert('Not implemented');
+            }
+            function editPriceButtonHandler(event) {
+                alert('Not implemented');
+            }
+            function inviteCollaboratorButtonHandler(event) {
+                alert('Not implemented');
+            }
+            function removeCollaboratorButtonHandler(event) {
+                alert('Not implemented');
+            }
+            async function deleteButtonHandler(event) {
+                if (confirm('Are you sure?'))
+                    await fetch('/api/deletePost', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            postID: postID
+                        })
+                    }).then(response => {
+                        if (!response.ok)
+                            throw new Error(`Server threw ${response.statusText}`);
+                        location.replace('/feed.html');
+                    }).catch(error => {
+                        alert('Failed to delete post!');
+                        console.log(error);
+                    });
+            }
+            function replyButtonHandler(event) {
+                alert('Not implemented');
+            }
+            function commentSubmitButtonHandler(event) {
+                alert('Not implemented');
+            }
+
+            fetch('/api/getPost', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    postID: postID
+                })
+            }).then(async response => {
+                if (response.status === 404) {
+                    alert('Post not found');
+                    return;
+                }
+                else if (!response.ok)
+                    throw new Error(`Server threw ${response.statusText}`);
+                let json = await response.json();
+
+                // Populate infoContainer
+                if (json.type === 'listing') {
+                    // Listing title/price/category row
+                    let titleRowText = document.createTextNode(`${json.title} - $${json.price / 100} - `)
+                    let productCategoryLink = document.createElement('a');
+                    productCategoryLink.href = `/productCategory.html?id=${json.productCategory.id}`;
+                    productCategoryLink.innerText = json.productCategory.name;
+                    let titleRow = document.createElement('p');
+                    titleRow.appendChild(titleRowText);
+                    titleRow.appendChild(productCategoryLink);
+                    infoContainer.appendChild(titleRow);
+                }
+
+                // Creators/time/location row
+                let creatorRow = document.createElement('p');
+                creatorRow.appendChild(document.createTextNode('By '));
+                for (let i = 0; i < json.users.length; i++) {
+                    let userLink = document.createElement('a');
+                    userLink.href = `/user.html?id=${json.users[i].id}`;
+                    userLink.innerText = json.users[i].displayName;
+                    creatorRow.appendChild(userLink);
+                    if (i !== (json.users.length - 1))
+                        creatorRow.appendChild(document.createTextNode(', '));
+                }
+                creatorRow.appendChild(document.createTextNode(` at ${(new Date(json.time)).toLocaleString()}`));
+                if ('location' in json) {
+                    creatorRow.appendChild(document.createTextNode(' at '));
+                    let locationLink = document.createElement('a');
+                    locationLink.href = `/location.html?id=${json.location.id}`;
+                    locationLink.innerText = json.location.name;
+                    creatorRow.appendChild(locationLink);
+                }
+                infoContainer.appendChild(creatorRow);
+
+                // Story song
+                if (json.type === 'story' && 'song' in json) {
+                    let songRow = document.createElement('p');
+                    songRow.innerText = `${json.song.title} by ${json.song.artist}`;
+                    let audio = document.createElement('audio');
+                    audio.autoplay = true;
+                    audio.loop = true;
+                    audio.src = json.song.url;
+                    songRow.appendChild(audio);
+                    infoContainer.appendChild(songRow);
+                }
+
+                // Show the relevant buttons
+                if (loggedIn) {
+                    // If we aren't logged in, there are no buttons to show. If we are, at least show the like button
+                    likeButton.style.display = 'inline';
+                    likeButton.value = `Like (${json.likeCount})`;
+                    likeButton.addEventListener('click', likeButtonHandler);
+
+                    // If we are the creator, show the edit buttons and collaborator invitation
+                    if (json.isCreator) {
+                        editCaptionButton.style.display = 'inline';
+                        editCaptionButton.addEventListener('click', editCaptionButtonHandler);
+                        editLocationButton.style.display = 'inline';
+                        editLocationButton.addEventListener('click', editLocationButtonHandler);
+                        editTitleButton.style.display = 'inline';
+                        editTitleButton.addEventListener('click', editTitleButtonHandler);
+                        editPriceButton.style.display = 'inline';
+                        editPriceButton.addEventListener('click', editPriceButtonHandler);
+                        inviteCollaboratorButton.style.display = 'inline';
+                        inviteCollaboratorButton.addEventListener('click', inviteCollaboratorButtonHandler);
+                    }
+
+                    // If we are a collaborator, show a button to remove the collaborator status
+                    if (json.isCollaborator) {
+                        removeCollaboratorButton.style.display = 'inline';
+                        removeCollaboratorButton.addEventListener('click', removeCollaboratorButtonHandler);
+                    }
+
+                    // If we are the creator or an admin, show a delete button
+                    if (json.isCreator || json.isAdmin) {
+                        deleteButton.style.display = 'inline';
+                        deleteButton.addEventListener('click', deleteButtonHandler);
+                    }
+
+                    // If this is a listing or a story, show a reply button.
+                    if (['listing', 'story'].includes(json.type)) {
+                        replyButton.style.display = 'inline';
+                        replyButton.addEventListener('click', replyButtonHandler);
+                    }
+                }
+
+                // Populate caption
+                if ('caption' in json)
+                    captionContainer.innerText = json.caption;
+
+                // Populate media
+                for (let media of json.media) {
+                    let mediaElement;
+                    if (media.type.startsWith('image/')) {
+                        mediaElement = document.createElement('img');
+                    } else if (media.type.startsWith('video/')) {
+                        mediaElement = document.createElement('video');
+                        mediaElement.controls = true;
+                    } else {
+                        console.error(`Invalid media ${media.url} of type ${media.type}`);
+                        continue;
+                    }
+                    mediaElement.src = media.url;
+                    postContainer.appendChild(mediaElement);
+                }
+            }).catch(error => {
+                alert('Failed to get post!');
+                console.error(error);
+            });
+
+            // Populate comments
+            function populateComments() {
+                fetch('/api/getComments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        postID: postID
+                    })
+                }).then(async response => {
+                    if (response.status === 404) {
+                        // Do not warn the user here. If this returns 404, the other request will also return 404, and that request will alert the user.
+                        return;
+                    }
+                    else if (!response.ok)
+                        throw new Error(`Server threw ${response.statusText}`);
+                    let json = await response.json();
+
+                    // Remove any children, in case we already populated the comments
+                    // Allows us to reload the comments without reloading the page
+                    while (commentsContainer.firstChild)
+                        commentsContainer.removeChild(commentsContainer.firstChild);
+
+                    for (let comment of json) {
+                        let commentElement = document.createElement('p');
+                        let userLink = document.createElement('a');
+                        userLink.href = `/user.html?${id = comment.user.id}`;
+                        userLink.innerText = comment.user.displayName;
+                        commentElement.appendChild(userLink);
+                        commentElement.appendChild(document.createTextNode(` at ${(new Date(comment.time).toLocaleString())}: ${comment.text}`));
+                    }
+
+                }).catch(error => {
+                    alert('Failed to get post!');
+                    console.error(error);
+                });
+            }
+            populateComments();
+
+            // Set up the comment box
+            if (loggedIn) {
+                commentSubmitButton.addEventListener('click', commentSubmitButtonHandler);
+            } else {
+                commentBox.style.display = 'none';
+                commentSubmitButton.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+
+</html>

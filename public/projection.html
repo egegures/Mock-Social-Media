@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<body>
+    <div id="main" style="display: none">
+        <p> <select id="tables">
+                <option value="" disabled selected>Select a table</option>
+            </select>
+            <button onclick="getAttrubutes()">Get Attributes</button>
+            <button onclick="getCheckedAttributes()">Get Selected Attributes</button>
+        </p>
+        <p>
+        <div id="attributes"></div>
+        </p>
+        <p>
+        <table id="data-table">
+
+        </table>
+        </p>
+    </div>
+</body>
+
+</html>
+
+<script>
+    addEventListener("DOMContentLoaded", () => {
+        isAdmin();
+        createTables();
+    })
+    let selectedTable;
+
+    function createTables() {
+        let tables = document.getElementById("tables");
+        fetch("/api/getTables", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+        })
+            .then(async response => {
+                if (response.ok) {
+                    json = await response.json();
+                    json.table.forEach(table => {
+                        let option = document.createElement("option");
+                        option.value = table;
+                        option.text = table;
+                        tables.appendChild(option);
+                    })
+                } else {
+                    console.log("Server threw an error");
+                }
+            })
+    }
+
+    function getAttrubutes() {
+        let tables = document.getElementById("tables");
+        let value = tables.options[tables.selectedIndex].value;
+        selectedTable = value;
+        fetch("/api/getAttributes", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                javascript: true,
+                value: value
+            })
+        }).then(async response => {
+            if (response.ok) {
+                json = await response.json();
+                if (json.attributes.length === 0) {
+                    alert("Please select a table");
+                    return;
+                }
+                displayAttributes(json.attributes);
+            } else {
+                console.log("Server threw an error");
+            }
+        })
+    }
+
+    function displayAttributes(attributes) {
+        let div = document.getElementById("attributes");
+        div.innerHTML = "";
+        attributes.forEach(attribute => {
+            let checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.name = attribute;
+            checkbox.value = attribute;
+
+            let label = document.createElement("label");
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(attribute));
+
+            div.appendChild(label);
+        })
+    }
+
+    function getCheckedAttributes() {
+        let checkboxes = document.querySelectorAll('#attributes input[type="checkbox"]:checked');
+        let selectedTable = tables.options[tables.selectedIndex].value;
+        if (checkboxes.length === 0) {
+            alert("No attributes selected");
+            return;
+        }
+        let selectedAttributes = Array.from(checkboxes).map(checkbox => checkbox.value);
+        fetch("/api/getSelectedAttributes", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                javascript: true,
+                selectedTable: selectedTable,
+                selectedAttributes: selectedAttributes
+            })
+        }).then(async response => {
+            if (response.ok) {
+                json = await response.json();
+                displayData(json.data, selectedAttributes);
+            } else {
+                alert("Table empty or no table found");
+            }
+        })
+    }
+
+    function displayData(data, selectedAttributes) {
+        let table = document.getElementById("data-table");
+        table.innerHTML = "";
+        let header = table.createTHead();
+        let row = header.insertRow(0);
+        selectedAttributes.forEach(attribute => {
+            let cell = row.insertCell();
+            cell.innerHTML = attribute;
+        }
+        )
+        data.forEach(row => {
+            let rowElement = table.insertRow();
+            selectedAttributes.forEach(attribute => {
+                let cell = rowElement.insertCell();
+
+                if (row[attribute] === null) {
+                    cell.innerHTML = "Not set yet";
+                } else {
+                    cell.innerHTML = row[attribute];
+                }
+            })
+        })
+    }
+    function isAdmin() {
+        fetch("/api/getAdminStatus", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                javascript: true,
+            })
+        }).then(async response => {
+            if (response.ok) {
+                json = await response.json();
+                if (json.adminStatus === true) {
+                    document.getElementById('main').style.display = 'block';
+                } else {
+                    let choice = window.confirm("It seems like you are not an admin, press OK if you are a TA, press cancel to go back.");
+                    if (choice) {
+                        document.getElementById('main').style.display = 'block';
+                    } else {
+                        window.location.href = "/feed.html";
+                    }
+                }
+            } else {
+                document.getElementById('adminStatus').textContent = "Server threw an error";
+            }
+        })
+    }
+</script>

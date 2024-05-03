@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Profile Page</title>
+</head>
+<body>
+    <h1>User Profile</h1>
+
+    <div id="user-info">
+        <h2>Username: <span id="username"></span></h2>
+        <p>Display Name: <span id="display-name"></span></p>
+        <p> Zodiac sign: <span id="sign"></span></p>
+        <p>Bio: <span id="bio"></span></p>
+        <p> <span id= "followers" >Followers:</span><span id="followerCount"></span></p>
+        <p><span id="following" >Following:<span id="followingCount"></span></p>
+        <p>Location: <a id="LocationLink" href="/location.html?id="> <span id="Location"></span></a></p>
+        <p>Admin status: <span id="adminStatus"></span></p>
+    </div>
+
+    <div id="adminActions" style="display: none">
+        <button id="makeAdmin" onclick="makeAdmin()">Make user admin</button>
+        <button id="removeAdmin" onclick="removeAdmin()">Remove admin status</button>
+        <button id="delete-user" onclick="deleteUser()">Delete User</button>
+    </div>
+
+    <div id="user-actions">
+        <button id="follow" onclick="followUser()">Follow</button>
+        <button id="unfollow" onclick="unfollowUser()">Unfollow</button>
+        <button id="block" onclick="blockUser()">Block</button>
+        <button id="message-user" onclick="messageUser()">Message</button>
+    </div>
+
+    <h2>User Posts</h2>
+    <ul id="user-posts">
+        <!-- Posts will be dynamically loaded here -->
+    </ul>
+
+    <script>
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const userID = window.location.search.split('=')[1];
+            loadPosts(userID);
+            updateLocationLink();
+            getAdminStatus();
+            fetch('/api/user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    userID: userID
+                })
+            }).then(async response => {
+                if (response.ok) {
+                    json = await response.json()
+                    document.getElementById('username').textContent = json.username;
+                    document.getElementById('display-name').textContent = json.displayName;
+                    document.getElementById('sign').textContent = json.zodiac;
+                    document.getElementById('bio').textContent = json.bio;
+                    document.getElementById('followerCount').textContent = json.followers === undefined ? 0 : json.followers.length;
+                    document.getElementById('followingCount').textContent = (json.following === undefined) ? 0 : json.following.length;
+                    document.getElementById('Location').textContent = json.location;
+                    document.getElementById('adminStatus').textContent = json.adminStatus;
+                } else {
+                    document.getElementById('username').textContent = "Server threw an error";
+                }
+            });
+            updateLocationLink();
+        });
+
+        function updateLocationLink() {
+            fetch('/api/getUserLocationID', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    locationName: document.getElementById('Location').textContent
+                })
+            }).then(async response => {
+                if (response.ok) {
+                    json = await response.json()
+                    if(json.locationID) {
+                    document.getElementById('LocationLink').href = `/location.html?id=${json.locationID}`;
+                    }
+                } else {
+                    document.getElementById('Location').textContent = "Server threw an error";
+                }
+            });
+        }
+        
+        function getAdminStatus() {
+            fetch("/api/getAdminStatus", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                })
+            }).then(async response => {
+                if (response.ok) {
+                    json = await response.json();
+                    if (json.adminStatus === true) {
+                        document.getElementById('adminActions').style.display = 'block';
+                    }
+                } else {
+                    document.getElementById('adminStatus').textContent = "Server threw an error";
+                }
+            })
+        }
+        function makeAdmin() {
+            fetch('/api/makeAdmin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    userID: window.location.search.split('=')[1],
+                })
+            }).then(async response => {
+                if (response.ok) {
+                    json = await response.json();
+                    if (json.successful) {
+                        alert("User is now an admin");
+                    } else {
+                        alert("User is already an admin");
+                    }
+                } else {
+                    document.getElementById('adminStatus').textContent = "Server threw an error";
+                }
+            }
+
+        )}
+
+        function removeAdmin() {
+            fetch('/api/removeAdmin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    userID: window.location.search.split('=')[1],
+                })
+            }).then(async response => {
+                if (response.ok) {
+                    json = await response.json();
+                    if (json.successful) {
+                        alert("User is now not an admin");
+                    } else {
+                        alert("User is already not an admin");
+                    }
+                } else {
+                    document.getElementById('adminStatus').textContent = "Server threw an error";
+                }
+            }
+
+        )}
+        function deleteUser() {
+            const confirmDelete = confirm("Are you sure you want to delete this user?");
+            if (!confirmDelete) {
+                return;
+            }
+            fetch('/api/deleteUser', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    userID: window.location.search.split('=')[1],
+                })
+            }).then(async response => {
+                if (response.ok) {
+                    json = await response.json();
+                    if (json.successful) {
+                        alert("User has been deleted");
+                        window.location.href = '/feed.html';
+                    } else {
+                        alert("Delete failed");
+                    }
+                } else {
+                    document.getElementById('adminStatus').textContent = "Server threw an error";
+                }
+            })
+        }
+        function followUser() {
+            fetch('/api/followUser', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    userID: window.location.search.split('=')[1],
+                })
+            }).then(async response => {
+                if (response.ok) {
+                    json = await response.json();
+                    if (json.successful) {
+                        alert("User has been followed");
+                        window.location.reload();
+                    } else if(!json.authenticated) {
+                        alert("You are not logged in");
+                    } else if (json.sameUser) {
+                        alert("You can't follow yourself");
+                    } else {
+                        alert("You are already following the user");
+                    }
+                } else {
+                    alert("Server threw an error");
+                }
+            })
+        }
+        function unfollowUser() {
+            fetch('/api/unfollowUser', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    userID: window.location.search.split('=')[1],
+                })
+            }).then(async response => {
+                if (response.ok) {
+                    json = await response.json();
+                    if (json.successful) {
+                        alert("User has been unfollowed");
+                        window.location.reload();
+                    } else if(!json.authenticated) {
+                        alert("You are not logged in");
+                    } else if (json.sameUser) {
+                        alert("You can't unfollow yourself");
+                    } else {
+                        alert("You are already not following the user");
+                    }
+                } else {
+                    alert("Server threw an error");
+                }
+            })
+        }
+        function blockUser() {
+
+        }
+        function messageUser() {
+
+        }
+        function loadPosts() {
+
+        }
+    </script> 
+</body>
+</html>

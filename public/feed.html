@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>304 social</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        #separator {
+            height: 5em;
+        }
+
+        #ad img {
+            max-width: 100vw;
+            max-height: 7em;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="navbar">
+        <a href="/user.html">Profile</a>
+        <a href="/newPost.html">New post</a>
+        <a href="/ads.html">Manage ads</a>
+        <a href="/messaging.html">Messaging</a>
+        <a href="/settings.html">Settings</a>
+        <a href="/productCategories.html">Product listings</a>
+        <a href="/search.html">Search</a>
+        <a href="/api/logout">Log out</a>
+    </div>
+    <div id="ad">Loading...</div>
+    <div id="stories-label">Stories: </div>
+    <div id="stories">Loading...</div>
+    <div id="separator"></div>
+    <div id="feed">Loading...</div>
+
+    <script src="/lib.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            function displayError(error, location) {
+                console.log(error);
+                while (location.firstChild) location.removeChild(location.firstChild);
+                location.innerText = error;
+            }
+
+            // Get a banner ad
+            //TODO reduce repitition
+            let adDiv = document.getElementById('ad');
+            let showingId;
+            fetch('/api/getBannerAd').then(async response => {
+                // Hide the ad div if there is no ad
+                if (response.status === 404)
+                    adDiv.style.display = 'none';
+                else if (!response.ok)
+                    throw new Error('The server threw an error');
+                else {
+                    let json = await response.json();
+                    while (adDiv.firstChild) adDiv.removeChild(adDiv.firstChild);
+                    showingId = json.showingID;
+                    let image = document.createElement('img');
+                    image.src = json.imageURL;
+                    image.onclick = function () {
+                        fetch('/api/clickAd', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                showingId: showingId
+                            })
+                        }).then(() => {
+                            location.href = json.clickURL;
+                        });
+                    }
+                    adDiv.appendChild(image);
+                }
+            }).catch(error => displayError(error, adDiv));
+
+            // Populate stories
+            let storiesDiv = document.getElementById('stories');
+            fetch('/api/getFeedStories').then(async response => {
+                if (!response.ok)
+                    throw new Error('The server threw an error');
+                let json = await response.json();
+
+                //TODO render nicely
+                while (storiesDiv.firstChild) storiesDiv.removeChild(storiesDiv.firstChild);
+                for (let story of json) {
+                    let usernames = await Promise.all(story.userID.map(getDisplayName));
+                    let postText = `Story by ${usernames.join(', ')} at ${(new Date(story.time)).toLocaleString()}`;
+
+                    let p = document.createElement('p');
+                    let a = document.createElement('a');
+                    a.innerText = postText;
+                    a.href = `/post.html?id=${story.postID}`;
+                    p.appendChild(a);
+                    storiesDiv.appendChild(p);
+                }
+            }).catch(error => displayError(error, storiesDiv));
+
+            // Populate posts
+            let postsDiv = document.getElementById('feed');
+            fetch('/api/getFeedPosts').then(async response => {
+                if (!response.ok)
+                    throw new Error('The server threw an error');
+                let json = await response.json();
+
+                while (postsDiv.firstChild) postsDiv.removeChild(postsDiv.firstChild);
+                for (let post of json) {
+                    let displayNames = await Promise.all(post.userID.map(getDisplayName));
+                    let postText = `Post by ${displayNames.join(', ')} at ${(new Date(post.time)).toLocaleString()}`;
+                    if ('title' in post) {
+                        postText += `: $${post.price / 100} - ${post.title}`;
+                    }
+                    if (post.caption != null) postText += `: ${post.caption}`;
+
+                    let p = document.createElement('p');
+                    let a = document.createElement('a');
+                    a.innerText = postText;
+                    a.href = `/post.html?id=${post.postID}`;
+                    p.appendChild(a);
+                    postsDiv.appendChild(p);
+                }
+            }).catch(error => displayError(error, postsDiv));
+
+            function updateColab(type, id, accepted) {
+                fetch('/api/updateColab', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        id: id,
+                        accepted: accepted
+                    })
+                }).then(response => {
+                    if (!response.ok) throw new Error(`Server threw ${response.statusText}`);
+                }).catch(error => {
+                    console.log(error);
+                    alert(`Failed to ${accepted ? 'accept' : 'reject'} request`);
+                });
+            }
+
+            // Get admin status and collaboration requests
+            let navbar = document.getElementById('navbar');
+            fetch('/api/getUserFeedInfo').then(async response => {
+                let json = await response.json();
+
+                if (json.admin) {
+                    const ADMIN_LINKS = [
+                        ['/locations.html', 'Manage locations'],
+                        ['/productCategories.html', 'Manage product categories'],
+                        ['/songs.html', 'Manage songs']
+                    ];
+
+                    navbar.appendChild(document.createTextNode('Admin links: '));
+                    for (let [url, title] of ADMIN_LINKS) {
+                        let link = document.createElement('a');
+                        link.href = url;
+                        link.innerText = title;
+                        navbar.appendChild(link);
+                    }
+                }
+
+                for (let postColab of json.postColabs) {
+                    let invitatationText = `${postColab.username} has invited you as a collaborator on a post!`;
+                    if (postColab.caption != null)
+                        invitatationText += ` Caption: ${postColab.caption}`;
+
+                    updateColab('post', postColab.postID, confirm(invitatationText))
+                }
+
+                for (let adColab of json.adColabs) {
+                    let invitatationText = `${adColab.username} has invited you as a collaborator on an ad for ${adColab.clickURL}`;
+                    updateColab('ad', adColab.adID, confirm(invitatationText));
+                }
+            }).catch(error => {
+                console.log(error);
+                alert('Failed to get admin status and collaboration invites');
+            });
+        });
+    </script>
+</body>
+
+</html>

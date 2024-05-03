@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Product Categories</title>
+</head>
+<body>
+    <h1>Product Categories</h1>
+    <div id="categories">
+        <!-- Product categories buttons will be loaded here -->
+    </div>
+
+    <!-- Admin functionalities -->
+    <div id="adminPanel" class="hidden">
+        <h2>Admin Panel</h2>
+        <div id="addCategoryForm" class="hidden">
+            <input type="text" id="newCategoryName" placeholder="Category Name">
+            <button onclick="addCategory()">Add</button>
+        </div>
+
+        <div id="deleteCategoryForm" class="hidden">
+            <input type="text" id="deleteCategoryName" placeholder="Category Name to Delete">
+            <button onclick="deleteCategory()">Delete</button>
+        </div>
+
+    </div>
+
+    <script>
+        const categories = ["Electronics", "Collectibles", "Vehicles", "Furniture", "Other"];
+
+        window.onload = function() {
+            checkIfAdmin();
+            loadCategories();
+        };
+
+        function checkIfAdmin() {
+            fetch('/api/getUserFeedInfo')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.admin) {
+                        document.getElementById('adminPanel').classList.remove('hidden');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function loadCategories() {
+            const categoriesDiv = document.getElementById('categories');
+            categories.forEach(category => {
+                const button = document.createElement('button');
+                button.innerText = category;
+                button.onclick = function() { redirectToCategory(category); };
+                categoriesDiv.appendChild(button);
+            });
+
+            fetch("/api/getCategories", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            }).then(response => response.json())
+            .then(data => { 
+                data.categories.forEach(category => {
+                const button = document.createElement('button');
+                button.innerText = category;
+                button.onclick = function() { redirectToCategory(category); };
+                categoriesDiv.appendChild(button);
+            });})
+
+
+        }
+
+        function deleteCategory() {
+            const categoryName = document.getElementById('deleteCategoryName').value;
+            if (!categoryName) {
+                alert('Please enter a category name to delete.');
+                return;
+            }
+
+            fetch('/api/deleteCategory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: categoryName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Category deleted successfully.');
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Failed to delete category.');
+                }
+            })
+        }
+
+        function addCategory() {
+            const categoryName = document.getElementById('newCategoryName').value;
+            if (!categoryName) {
+                alert('Please enter a category name.');
+                return;
+            }
+            // Check if the category already exists
+            if (categories.includes(categoryName)) {
+                alert('Category already exists.');
+                return;
+            }
+            
+            fetch('/api/addCategory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: categoryName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Category added successfully.');
+                    // Add the new category button
+                    const categoriesDiv = document.getElementById('categories');
+                    const newButton = document.createElement('button');
+                    newButton.innerText = categoryName;
+                    newButton.onclick = function() { redirectToCategory(categoryName); };
+                    categoriesDiv.appendChild(newButton);
+
+                    // Clear the input field
+                    document.getElementById('newCategoryName').value = '';
+                } else {
+                    alert(data.message || 'Failed to add category.');
+                }
+            })
+            .catch(error => {
+                console.error('Error adding category:', error);
+                alert('Error adding category.');
+            });
+        }
+
+        function redirectToCategory(category) {
+            window.location.href = `/product_category/${encodeURIComponent(category)}`;
+        }
+    </script>
+</body>
+</html>

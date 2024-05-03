@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings</title>
+</head>
+<body>
+    <h1>Settings</h1>
+    <form id="settings-form">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" placeholder="New Username"><br>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" placeholder="New Password"><br>
+
+        <label for="confirmPassword">Confirm Password:</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="New Password"><br>
+
+        <label for="birthday">Birthday:</label>
+        <input type="text" id="birthday" name="birthday" placeholder="New Birthday"><br>
+
+        <label for="displayName">Display Name:</label>
+        <input type="text" id="displayName" name="displayName" placeholder="New Display Name"><br>
+
+        <label for="bio">Bio:</label>
+        <textarea id="bio" name="bio" placeholder="New Bio"></textarea><br>
+
+        <label for="location">Location:</label>
+        <input type="text" id="location" name="location" placeholder="New Location"><br>
+
+        <button type="button" onclick="updateSettings()">Save Changes</button>
+    </form>
+    <div id="updateStatus"></div>
+
+    <h2>Block a User</h2>
+    <div>
+        <input type="text" id="usernameToBlock" placeholder="Enter Username to Block">
+        <button onclick="blockUser()">Block User</button>
+    </div>
+
+    <h2>Blocked Users</h2>
+    <ul id="blockedUsers">
+        <!-- Blocked users will be displayed here -->
+    </ul>
+
+    <script>
+        function updateSettings() {
+            // Retrieve form values
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+            var confirmPassword = document.getElementById('confirmPassword').value;
+            var birthday = document.getElementById('birthday').value;
+            var displayName = document.getElementById('displayName').value;
+            var bio = document.getElementById('bio').value;
+            var location = document.getElementById('location').value;
+            var updateStatus = document.getElementById('updateStatus');
+
+            // Validate password confirmation
+            if (password !== confirmPassword) {
+                updateStatus.textContent = "Passwords do not match";
+                return;
+            }
+
+            // Send data to server
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password,
+                    birthday: birthday,
+                    displayName: displayName,
+                    bio: bio,
+                    location: location
+                })
+            }).then(response => {
+                if (response.ok) {
+                    updateStatus.textContent = "Settings updated successfully";
+                } else {
+                    updateStatus.textContent = "Failed to update settings";
+                }
+            }).catch(error => {
+                console.error('Error updating settings:', error);
+                updateStatus.textContent = "Error updating settings";
+            });
+        }
+
+        function blockUser() {
+            const usernameToBlock = document.getElementById('usernameToBlock').value;
+            if (!usernameToBlock) {
+                alert('Please enter a username to block.');
+                return;
+            }
+            
+            fetch('/api/block-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ usernameToBlock: usernameToBlock })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User blocked successfully.');
+                    displayBlockedUsers(); // Refresh the blocked users list
+                } else {
+                    alert(data.message || 'Failed to block user.');
+                }
+            })
+            .catch(error => {
+                console.error('Error blocking user:', error);
+                alert('Error blocking user.');
+            });
+        }
+
+        function displayBlockedUsers() {
+            fetch('/api/blocked-users')
+                .then(response => response.json())
+                .then(data => {
+                    const listElement = document.getElementById('blockedUsers');
+                    listElement.innerHTML = ''; // Clear existing list
+                    // working until here
+
+                    data.blockedUsers.forEach(user => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `Blocked Users: ${user.username}`;
+                        listElement.appendChild(listItem);
+                    }); // todo: fix this
+                })
+        }
+
+        // Load blocked users on page load
+        window.onload = function() {
+            displayBlockedUsers();
+        };
+    </script>
+</body>
+</html>

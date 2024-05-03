@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+    <body><p>
+        <label style="font-weight:bold">Search for users using these parameters; unused filters will not be taken into account in the final result</label>
+        <label style="font-weight:bold"></label>
+    </p><p>
+        <label style="font-weight:bold">Username:</label>
+    <input type="text" id="username" placeholder="Username">
+    <select id="usernameoption"> <option value="AND">AND</option> <option value="OR">OR</option></select>
+    </p>
+    <p><label style="font-weight:bold">Display name:</label>
+    <input type="text" id="displayname" placeholder="Display name">
+    <select id="displaynameoption"> <option value="AND">AND</option> <option value="OR">OR</option></select>
+    <p><label style="font-weight:bold">Location:</label>
+    <input type="text" id="locationname"placeholder="Location">
+    <select id="locationnameoption"> <option value="AND">AND</option> <option value="OR">OR</option></select>
+    <p><label style="font-weight:bold">Birthday:</label>
+    <input type="date" id="birthday">
+    <button onclick="search()">Search</button></p>
+    <p><div id="searchResults"></div></p>
+    
+    </body>
+    
+    <script>
+        function search() {
+            var inputs = {
+            username: document.getElementById("username").value, 
+            displayName: document.getElementById("displayname").value, 
+            locationID: document.getElementById("locationname").value, 
+            birthday: document.getElementById("birthday").value};
+            var inputNames = ['username', 'displayName', 'locationID', 'birthday']
+            var options = {
+            username: document.getElementById("usernameoption").value, 
+            displayName: document.getElementById("displaynameoption").value, 
+            location: document.getElementById("locationnameoption").value};
+            fetch("/api/search", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    inputs: inputs,
+                    inputNames: inputNames,
+                    options: options
+                })
+
+                }).then(async response => {
+                    if (response.ok) {
+                        json = await response.json();
+                        displayUsers(json.names, json.ids);
+                    } else {
+                        alert("No users found");
+                    }
+                })
+            }
+
+            function displayUsers(names, ids) {
+            let container = document.getElementById("searchResults");
+            container.innerHTML = "";
+            for(i=0;i<ids.length;i++) {
+            var userElement = document.createElement('div');
+            userElement.innerHTML = `<p>${names[i]} <button onclick="window.location.href = '/post.html?id=${ids[i]}'">View Post</button></p>`;
+            container.appendChild(userElement);
+            }
+        }
+    </script>
+</html>

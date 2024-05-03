@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        li {
+            margin-bottom: 5px;
+        }
+    </style>
+    <body>
+        <h1 id="groupName">Placeholder, if you see this there is a problem</h1>
+        <div id="error"></div>
+        <textarea id="messageInput" placeholder="Type your message..."></textarea>
+        <button onclick="sendMessage()">Send</button>
+       
+        <button id="addMember" onclick="addMember()">Add member</button>
+
+
+        <p> <button onclick="window.location.href = '/messaging.html'">Back</button></p>
+        <ul id="messages"></ul>
+
+        
+
+    </body>
+</html>
+
+
+<script>
+    let groupID = window.location.search.split("=")[1];
+
+    addEventListener("DOMContentLoaded", () => {
+
+        // also checks if the requested user is authenticated to see the group (i.e. in the group)
+        fetch("/api/getGroupName", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                javascript: true,
+                groupID: groupID,
+            })
+        }).then(async response => {
+            if (response.ok) {
+                json = await response.json();
+                if (!json.isInGroup) {
+                    alert("You are not authorized to view this group");
+                } else {
+                document.getElementById("groupName").textContent = "Chat: " + json.groupName;
+                fetchMessages();
+                }
+            } else {
+                throw new Error(`Server threw ${response.statusText}`);
+            }
+        }).catch(error => {
+            console.error(error);
+        })
+    });
+
+    function sendMessage() {
+        let input = document.getElementById("messageInput").value;
+        fetch("/api/sendMessage", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                javascript: true,
+                groupID: groupID,
+                message: input,
+            })
+        }).then(async response => {
+            if (response.ok) {
+                json = await response.json();
+                document.getElementById("messageInput").value = "";
+                var listItem = document.createElement("li");
+                listItem.textContent = json.sender + ": " + input + " (" + json.time + ")";
+                document.getElementById("messages").appendChild(listItem);
+            } 
+            if (response.status === 401) {
+                document.getElementById("error").textContent = "You are not authorized to send messages in this group"}
+        })
+    }
+
+    function fetchMessages() {
+        while (document.getElementById("messages").firstChild) {
+            messagesContainer.removeChild(messagesContainer.firstChild);
+        }
+        fetch("/api/getMessages", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                javascript: true,
+                groupID: groupID,
+            })
+        }).then(async response => {
+            if (response.ok) {
+                json = await response.json();
+                let uniqueSender = new Set(json.senderNames);
+                if (uniqueSender.length > 2) {
+                    document.getElementById("addMember").style.display = "block";
+                }
+                for (var i = 0; i < json.timeArray.length; i++) {
+                    var linkElement = document.createElement("a");
+                    linkElement.href = '/user.html?userid=' + json.senderID[i];
+                    linkElement.textContent = json.senderNames[i];
+                    var listItem = document.createElement("li");
+                    listItem.appendChild(linkElement);
+                    listItem.innerHTML += ": " + json.textArray[i] + " (" + json.timeArray[i] + ")";
+                    document.getElementById("messages").appendChild(listItem);
+                }
+            } else {
+                alert("Server threw an error");
+            }
+        }).catch(error => {
+            console.error(error);
+        })
+    }
+
+    function addMember(){
+        var newMember = prompt("Enter the username of the user you want to add to the group");
+        fetch("/api/addMember", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                javascript: true,
+                groupID: groupID,
+                username: newMember,
+            })
+        }).then(async response => {
+            if (response.ok) {
+                json = await response.json();
+                if (json.userExists) {
+                    if (json.userAdded) {
+                        alert("User added successfully");
+                    } else {
+                        alert("User is already in the group");
+                    }
+                } else {
+                    alert("User with that username does not exist");
+                }
+            } else {
+                alert("User with that username does not exist");
+            }
+        }).catch(error => {
+            console.error(error);
+        })
+    }
+</script>

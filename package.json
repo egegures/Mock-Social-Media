@@ -1,0 +1,16 @@
+{
+  "name": "304-social",
+  "version": "0.0.0",
+  "description": "Social media network for CPSC 304",
+  "main": "main.js",
+  "keywords": [],
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.6",
+    "data-uri-to-buffer": "^6.0.1",
+    "express": "^4.17.3",
+    "mime-types": "^2.1.35",
+    "oracledb": "^5.2.0"
+  }
+}

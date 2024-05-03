@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>304 Social</title>
+    <style>
+        #error {
+            color: #ffffff;
+            background-color: #ff0000;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Registration</h1>
+    <noscript>
+        <p>
+            You have Javascript disabled. You can still register for an account, but this page won't be able to display
+            error messages. If you are redirected to your feed, registration was successful. If you are redirected back
+            here, registration was not successful.
+        </p>
+    </noscript>
+    <div id="error"></div>
+    <form action="/api/newUser" method="post" id="form">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" />
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" />
+
+        <button type="submit" id="submit">Register</button>
+    </form>
+
+    <script>
+        function errorMessage(message) {
+            let errorDiv = document.getElementById('error');
+            errorDiv.innerText = message;
+            errorDiv.style.display = 'block';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            let form = document.getElementById('form');
+            let submitButton = document.getElementById('submit');
+
+            submitButton.addEventListener('click', event => {
+                event.preventDefault(); // If there is a problem, we do not want the user to lose what they entered. Do not reload the page
+
+                // Client-side handling of basic errors
+                if (document.getElementById('username').value === '')
+                    errorMessage('Please enter a username');
+                else if (document.getElementById('password').value === '')
+                    errorMessage('Please enter a password');
+
+                // event.preventDefault prevents the form data from being sent, so we must send it oureselves.
+                else {
+                    fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            javascript: true, // Indicate that the form was submitted using JS rather than the native HTML method, and therefore the server should return JSON rather than 302 redirects
+                            username: document.getElementById('username').value,
+                            password: document.getElementById('password').value
+                        })
+                    }).then(async response => {
+                        if (!response.ok)
+                            throw new Error('The server threw an error');
+
+                        json = await response.json();
+
+                        if (json.success)
+                            location.replace('/feed.html');
+                        else {
+                            switch (json.reason) {
+                                case 'userExists':
+                                    errorMessage('The username you have chosen is already taken.');
+                                    break;
+                                case 'invalidUsername':
+                                    errorMessage('The username you have chosen is invalid');
+                                    break;
+                                case 'invalidPassword':
+                                    errorMessage('The password you have chosen is invalid');
+                                    break;
+                            }
+                        }
+                    }).catch(error => {
+                        console.log(error);
+                        errorMessage(`Error submitting form: ${error.message}`);
+                    });
+                }
+            })
+        })
+    </script>
+</body>
+
+</html>

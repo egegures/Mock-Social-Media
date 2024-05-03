@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+    <body>
+        <p>
+            <p>
+                <label style="font-weight: bold;">Gets all the ads in and their click count in database using GROUP BY</label></p>
+        <button onclick="getAdClicks()">Get ad clicks</button>
+        <div id="ad-clicks"></div>
+    </p>
+        <a>----------------------------------------------</a>
+    <p>
+        <p> <label style="font-weight: bold">Gets all "successful" ads that are above a chosen click rate using HAVING </label></p>
+        <input type="text" id="clickCount" placeholder="Ad click rate"/>
+        <button onclick="getAds()">Get ads</button>
+        <div id="successful-ads"></div>
+        <a>----------------------------------------------</a>
+        <p> <label style="font-weight: bold">Gets all users that have more than average number of posts and have their most recent post later than selected date. "Posts" include listings and stories beside traditional posts.</label></p>
+        <p><input type="date" id="time" value="2023-01-01"/>
+            <button onclick="getActiveUsers()">Get active users</button>
+            <div id="active-users"></div>
+            <div id="test"></div>
+        </p>
+        <a>----------------------------------------------</a>
+        <p><p>
+            <label style="font-weight: bold">Returns the ID of ads that are viewed by all users</label>
+        </p>
+            <button onclick="getViewedAds()">Get viewed ads</button>
+            <div id="viewed-ads"></div>
+        </p>
+        
+    </p>
+    </body>
+
+    <script>
+        function getAdClicks() {
+            fetch("/api/getAdClicks", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            })
+                .then(async response => {
+                    if (response.ok) {
+                        json = await response.json();
+                        displayAds(json.adID, json.clicks);
+                    } else {
+                        alert("No ads in database or no created ads has been clicked yet")
+                    }
+                })
+        }
+
+        function getAds() {
+            const clickRate= document.getElementById("clickCount").value;
+            fetch("/api/getSuccessfulAds", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript:true,
+                    clickRate: clickRate
+                })
+            })
+                .then(async response => {
+                    if (response.ok) {
+                        json = await response.json();
+                        displaySuccessfulAds(json.adID, json.totalShows, json.totalClicks);
+                    } else {
+                        alert("No successful ads with choosen click rate")
+                    }
+                })
+        }
+
+        function getActiveUsers() {
+            fetch("/api/getActiveUsers", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    time: document.getElementById("time").value
+                })
+            })
+                .then(async response => {
+                    if (response.ok) {
+                        json = await response.json();
+                        let usernames = await getUsernames(json.userID);
+                        displayActiveUsers(usernames, json.totalPosts, json.latestPost);
+                    } else {
+                        alert("No active users in with selected date")
+                    }
+                })
+        }
+
+        function getViewedAds() {
+            fetch("/api/getViewedAds", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                })
+            })
+                .then(async response => {
+                    if (response.ok) {
+                        json = await response.json();const adList = document.createElement('ul');
+
+                        // Iterate through the ads and create list items
+                        for (let i = 0; i < json.ads.length; i++) {
+                            const listItem = document.createElement('li');
+                            listItem.textContent = `AdID: ${json.ads[i]}`;
+                            adList.appendChild(listItem);
+                        }
+            
+                        // Get the container element and append the list to it
+                        const container = document.getElementById('viewed-ads');
+                        container.innerHTML = '';  // Clear existing content
+                        container.appendChild(adList);
+                    } else {
+                        alert("No ad have been viewed by all users")
+                    }
+                })
+        }
+
+        function displayAds(adID, clicks) {
+            let container = document.getElementById("ad-clicks");
+            container.innerHTML = "";
+            const table = document.createElement("table");
+            const headerRow = table.createTHead().insertRow(0);
+            const adIDHeader = headerRow.insertCell(0);
+            const clicksHeader = headerRow.insertCell(1);
+            adIDHeader.innerHTML = "<b>Ad ID</b>";
+            clicksHeader.innerHTML = "<b>Clicks</b>";
+            for (let i = 0; i < adID.length; i++) {
+                const row = table.insertRow(i + 1);
+                const adIDCell = row.insertCell(0);
+                const clicksCell = row.insertCell(1);
+                adIDCell.textContent = adID[i];
+                clicksCell.textContent = clicks[i];
+            }
+
+            container.appendChild(table);
+        }
+
+        function displaySuccessfulAds(adID, totalShows, totalClicks) {
+            const container = document.getElementById("successful-ads");
+            container.innerHTML = "";
+            const table = document.createElement("table");
+            const headerRow = table.createTHead().insertRow(0);
+            const adIDHeader = headerRow.insertCell(0);
+            const totalShowsHeader = headerRow.insertCell(1);
+            const totalClicksHeader = headerRow.insertCell(2);
+            const clickRateHeader = headerRow.insertCell(3);
+            adIDHeader.innerHTML = "<b>Ad ID</b>";
+            totalShowsHeader.innerHTML = "<b>Total Shows</b>";
+            totalClicksHeader.innerHTML = "<b>Total Clicks</b>";
+            clickRateHeader.innerHTML = "<b>Click Rate</b>";
+
+            for (let i = 0; i < adID.length; i++) {
+                const row = table.insertRow(i + 1);
+                const adIDCell = row.insertCell(0);
+                const totalShowsCell = row.insertCell(1);
+                const totalClicksCell = row.insertCell(2);
+                const clickRateCell = row.insertCell(3);
+                adIDCell.textContent = adID[i];
+                totalShowsCell.textContent = totalShows[i];
+                totalClicksCell.textContent = totalClicks[i];
+                clickRateCell.textContent = (totalClicks[i] / totalShows[i]);
+            }
+            container.appendChild(table);
+        }
+
+        async function getUsernames(userID) {
+            return fetch("/api/getUsernames", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    javascript: true,
+                    userID: userID
+                })
+            })
+            .then(async response => {
+                if (response.ok) {
+                    const json = await response.json();
+                    return json.usernames;
+                } else {
+                    alert("Server threw an error");
+                    return [];
+                }
+            });
+            }
+
+        function displayActiveUsers(usernames, totalPosts, latestPost) {
+            let container = document.getElementById("active-users");
+            container.innerHTML = "";
+            const table = document.createElement("table");
+            const headerRow = table.createTHead().insertRow(0);
+            const usernameHeader = headerRow.insertCell(0);
+            const totalPostsHeader = headerRow.insertCell(1);
+            const latestPostHeader = headerRow.insertCell(2);
+            usernameHeader.innerHTML = "<b>Username</b>";
+            totalPostsHeader.innerHTML = "<b>Total Posts</b>";
+            latestPostHeader.innerHTML = "<b>Latest Post</b>";
+            for (let i = 0; i < usernames.length; i++) {
+                const row = table.insertRow(i + 1);
+                const usernameCell = row.insertCell(0);
+                const totalPostsCell = row.insertCell(1);
+                const latestPostCell = row.insertCell(2);
+    
+                usernameCell.textContent = usernames[i];
+                totalPostsCell.textContent = totalPosts[i];
+                latestPostCell.textContent = latestPost[i];
+            }
+    
+            container.appendChild(table);
+        }
+    </script>
+</html>

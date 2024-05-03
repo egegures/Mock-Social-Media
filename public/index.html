@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>304 Social</title>
+    <style>
+        #incorrect-password {
+            color: #ffffff;
+            background-color: #ff0000;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>304 Social</h1>
+    <p>Database test UI <a href="/dbtest/index.html">here</a></p>
+
+    <p>Log in:</p>
+    <div id="incorrect-password">The username or password was incorrect.</div>
+    <form action="/api/login" method="post">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" />
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" />
+
+        <button type="submit">Log in</button>
+    </form>
+
+    <p>Need an account? <a href="/newUser.html">Sign up</a></p>
+
+    <script>
+        if (location.search == '?incorrectPassword')
+            document.getElementById('incorrect-password').style.display = 'block';
+
+        for (let cookie of document.cookie.split('; ')) {
+            let [name, value] = cookie.split('=');
+            if (name === 'user')
+                location.replace('/feed.html');
+        }
+    </script>
+</body>
+
+</html>

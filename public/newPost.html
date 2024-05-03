@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>New post!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        #media-list-container {
+            min-width: min(20em, 100%);
+            margin: 0;
+            border: 1pt solid black;
+        }
+
+        #media-list-container .media-list-item {
+            height: 1em;
+            display: grid;
+            grid-template-columns: 1em 1em auto 1fr 1em;
+            padding: 0.1em 0;
+        }
+
+        #media-list-container .media-list-item * {
+            max-height: 1em;
+            border: none;
+            padding: none;
+        }
+
+        #media-list-container .media-list-item .media-list-label {
+            padding: 0 0.1em;
+        }
+
+        .post-type-field-container {
+            display: none;
+        }
+
+        #normal-fields-container {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>New post!</h1>
+
+    <div id="media-list-container">
+    </div>
+
+    <input type="file" id="media-upload" accept="image/*, video/*" multiple />
+
+    <br>
+
+    <label for="caption">Caption:</label> <textarea id="caption" placeholder="Caption"></textarea>
+
+    <br>
+
+    <label for="location">Location:</label> <select id="location">
+        <option value="-none">None</option>
+    </select>
+
+    <br>
+
+    <input type="radio" id="post-type-normal" name="post-type" value="normal" checked> <label
+        for="post-type-normal">Normal</label>
+    <input type="radio" id="post-type-listing" name="post-type" value="listing"> <label
+        for="post-type-listing">Listing</label>
+    <input type="radio" id="post-type-story" name="post-type" value="story"> <label for="post-type-story">Story</label>
+
+    <div class="post-type-field-container" id="normal-fields-container"></div>
+    <div class="post-type-field-container" id="listing-fields-container">
+        <label for="listing-title">Title:</label> <input type="text" id="listing-title" placeholder="title" />
+        <label for="listing-price">Price:</label> <input type="number" id="listing-price" placeholder="price"
+            step="0.01" min="0" value="0" />
+        <label for="product-category">Product category:</label> <select id="product-category">
+            <option value="-none">Please select</option>
+        </select>
+    </div>
+    <div class="post-type-field-container" id="story-fields-container">
+        <label for="story-song">Song:</label> <select id="story-song">
+            <option value="-none">None</option>
+        </select>
+    </div>
+
+    <input type="button" id="submit" value="submit" />
+
+    <script>
+        let unsavedData = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Radio buttons to switch between post types
+            const POST_TYPES = ["normal", "listing", "story"];
+            let selectedPostType = 'normal';
+            function selectPostType(targetType) {
+                unsavedData = true;
+                selectedPostType = targetType;
+                for (let postType of POST_TYPES) {
+                    let div = document.getElementById(`${postType}-fields-container`);
+                    div.style.display = (postType == targetType) ? 'block' : 'none';
+                }
+            }
+            for (let postType of POST_TYPES) {
+                let button = document.getElementById(`post-type-${postType}`);
+                button.addEventListener('click', () => { selectPostType(postType) });
+            }
+
+            // React to a user selecting some media
+            let mediaListContainer = document.getElementById('media-list-container');
+            let mediaUploadButton = document.getElementById('media-upload');
+            let files = [];
+            // Get a file index from a button
+            function getFileIndex(button) {
+                return parseInt(button.parentNode.id.split('-')[1]);
+            }
+            // Swap two pieces of media in both the UI and internally, by indes. Assumes i1 is originally the first and i2 is originally the second. Don't swap if either value is out of range
+            function swapMedia(i1, i2) {
+                if (i1 < 0 || i2 < 0 || i1 >= files.length || i2 >= files.length) return;
+
+                // Swap the files in the file list
+                [files[i1], files[i2]] = [files[i2], files[i1]];
+
+                // Swap the files in the UI
+                let listItem1 = document.getElementById(`mediaListItem-${i1}`)
+                let listItem2 = document.getElementById(`mediaListItem-${i2}`)
+                mediaListContainer.insertBefore(listItem2, listItem1);
+
+                // Swap the IDs so the UI indexes align with the file indexes again
+                [listItem1.id, listItem2.id] = [listItem2.id, listItem1.id];
+            }
+            mediaUploadButton.addEventListener('change', function () {
+                unsavedData = true;
+                for (let file of this.files) {
+                    let i = files.push(file) - 1;
+                    let mediaListItem = document.createElement('div');
+                    mediaListItem.classList.add("media-list-item");
+                    mediaListItem.id = `mediaListItem-${i}`;
+
+                    let upButton = document.createElement('input');
+                    upButton.type = 'button';
+                    upButton.classList.add('media-list-button');
+                    upButton.value = '↑';
+                    upButton.addEventListener('click', event => {
+                        let index = getFileIndex(event.target);
+                        swapMedia(index - 1, index);
+                    });
+                    mediaListItem.appendChild(upButton);
+
+                    let downButton = document.createElement('input');
+                    downButton.type = 'button';
+                    downButton.classList.add('media-list-button');
+                    downButton.value = '↓';
+                    downButton.addEventListener('click', event => {
+                        let index = getFileIndex(event.target);
+                        swapMedia(index, index + 1);
+                    });
+                    mediaListItem.appendChild(downButton);
+
+                    let preview;
+                    if (file.type.startsWith('image/')) {
+                        preview = document.createElement('img');
+                        preview.src = URL.createObjectURL(file);
+                    } else if (file.type.startsWith('video/')) {
+                        preview = document.createElement('video');
+                        preview.src = URL.createObjectURL(file);
+                        preview.muted = true;
+                        preview.loop = true;
+                        preview.play();
+                    } else {
+                        files.pop();
+                        alert(`Invalid file type ${file.type}`);
+                        break;
+                    }
+                    preview.classList.add('media-list-preview');
+                    mediaListItem.appendChild(preview);
+
+                    let label = document.createElement('div');
+                    label.classList.add('media-list-label');
+                    label.innerText = file.name;
+                    mediaListItem.appendChild(label);
+
+                    let deleteButton = document.createElement('input');
+                    deleteButton.type = 'button';
+                    deleteButton.classList.add('media-list-button');
+                    deleteButton.value = '-';
+                    deleteButton.addEventListener('click', event => {
+                        // Delete the file
+                        let index = getFileIndex(event.target);
+                        files.splice(index, 1);
+
+                        // Delete the entry from the UI
+                        mediaListContainer.removeChild(event.target.parentNode);
+
+                        // Renumber any entries that were after this one, so the indexes match the file indexes
+                        for (let i = index; i < files.length; i++) {
+                            document.getElementById(`mediaListItem-${i + 1}`).id = `mediaListItem-${i}`;
+                        }
+                    });
+                    mediaListItem.appendChild(deleteButton);
+
+                    mediaListContainer.appendChild(mediaListItem);
+                }
+            });
+
+            // Request locations and add them to the list
+            fetch('/api/getLocations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'id': true,
+                    'name': true,
+                    'city': true,
+                    'country': true
+                })
+            }).then(async response => {
+                if (!response.ok) {
+                    alert('The server threw an error while requesting locations');
+                    throw new Error(`Server threw ${response.statusText}`);
+                }
+
+                let json = await response.json();
+                let locationSelector = document.getElementById('location')
+
+                for (let location of json) {
+                    let choice = document.createElement('option');
+                    choice.value = location.id;
+                    choice.innerText = `${location.name} (${location.city}, ${location.country})`;
+                    locationSelector.appendChild(choice);
+                }
+            });
+
+            // Same thing for product categories
+            fetch('/api/getProductCategories').then(async response => {
+                if (!response.ok) {
+                    alert('The server threw an error while requesting locations');
+                    throw new Error(`Server threw ${response.statusText}`);
+                }
+
+                let json = await response.json();
+                let productCategorySelector = document.getElementById('product-category')
+
+                for (let productCategory of json) {
+                    let choice = document.createElement('option');
+                    choice.value = productCategory.id;
+                    choice.innerText = productCategory.name;
+                    productCategorySelector.appendChild(choice);
+                }
+            });
+
+            // And for songs
+            fetch('/api/getSongs').then(async response => {
+                if (!response.ok) {
+                    alert('The server threw an error while requesting locations');
+                    throw new Error(`Server threw ${response.statusText}`);
+                }
+
+                let json = await response.json();
+                let songSelector = document.getElementById('story-song')
+
+                for (let song of json) {
+                    let choice = document.createElement('option');
+                    choice.value = song.id;
+                    choice.innerText = `${song.title} by ${song.artist}`;
+                    songSelector.appendChild(choice);
+                }
+            });
+
+            // Add event listeners to mark the state as unsaved on change. (Note: not including media uploads and post type buttons because their event listeners already do this.)
+            let markUnsaved = () => { unsavedData = true };
+            document.getElementById('caption').addEventListener('change', markUnsaved);
+            document.getElementById('location').addEventListener('change', markUnsaved);
+            document.getElementById('listing-title').addEventListener('change', markUnsaved);
+            document.getElementById('listing-price').addEventListener('change', markUnsaved);
+            document.getElementById('product-category').addEventListener('change', markUnsaved);
+            document.getElementById('story-song').addEventListener('change', markUnsaved);
+            addEventListener('beforeunload', event => {
+                if (unsavedData)
+                    event.preventDefault();
+            });
+
+            // Validate and submit the post when the submit button is clicked
+            document.getElementById('submit').addEventListener('click', async () => {
+                let json = {
+                    type: selectedPostType,
+                }
+
+                // Not generating post ID or timestamp here. The server will do that.
+
+                // If the caption text isn't empty, validate and set it. If it is empty, leave it unset. The server will insert a NULL into the database.
+                // If the caption text is too long, complain to the user.
+                let captionText = document.getElementById('caption').value.trim();
+                if (captionText != '') {
+                    if (captionText.length > 4000) {
+                        alert(`Caption length of ${captionText.length} exceeds limit of 4000 characters`);
+                        return;
+                    } else {
+                        json.caption = captionText;
+                    }
+                }
+
+                // Location
+                let locationID = document.getElementById('location').value;
+                if (locationID != '-none') json.location = locationID;
+
+                // Specific handling for post types
+                switch (selectedPostType) {
+                    case 'listing':
+                        // Enforce location on listings
+                        if (!('location' in json)) {
+                            alert('Listings require a location');
+                            return;
+                        }
+
+                        // Title
+                        let titleText = document.getElementById('listing-title').value.trim();
+                        if (titleText.length == 0) {
+                            alert('Please enter a title');
+                            return;
+                        } else if (titleText.length > 32) {
+                            alert(`Title length of ${titleText.length} exceeds limit of 32 characters`);
+                            return;
+                        } else {
+                            json.title = titleText;
+                        }
+
+                        // Price
+                        let price = parseFloat(document.getElementById('listing-price').value);
+                        if (isNaN(price)) {
+                            alert('Please enter a price');
+                            return;
+                        } else if (price < 0) {
+                            alert('Price cannot be negative')
+                            return;
+                        } else {
+                            json.price = Math.round(price * 100);
+                        }
+
+                        // Product category
+                        let productCategoryID = document.getElementById('product-category').value;
+                        if (productCategoryID == '-none') {
+                            alert('Please select a product category');
+                            return;
+                        } else {
+                            json.category = productCategoryID;
+                        }
+                        break;
+
+                    case 'story':
+                        // Song
+                        let songID = document.getElementById('story-song').value;
+                        if (songID != '-none') {
+                            json.song = songID;
+                        }
+                        break;
+                }
+
+                // Add the files
+                async function getDataURL(file) {
+                    const reader = new FileReader();
+                    return new Promise((resolve, reject) => {
+                        reader.onload = () => { resolve(reader.result); }
+                        reader.onerror = () => { reject({ error: reader.error, file: file }); }
+                        reader.readAsDataURL(file);
+                    })
+                }
+                Promise.all(files.map(file => getDataURL(file))).catch(info => {
+                    alert(`Failed to read ${info.file.name}`);
+                    console.log(info.error);
+                }).then(result => {
+                    json.files = result;
+                    return fetch('/api/newPost', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(json)
+                    });
+                }).then(async response => {
+                    if (response.status === 400) {
+                        alert('The server rejected the post.');
+                    } else if (response.status === 413) {
+                        alert('The server rejected the post: total file size is too large')
+                    } else if (!response.ok) {
+                        alert('The server threw an error');
+                        throw new Error(`Server threw ${response.statusText}`);
+                    }
+
+                    let json = await response.json();
+
+                    location.href = `/post.html?id=${json.id}`;
+                }).catch(error => {
+                    alert('Failed to submit post');
+                    console.log(error);
+                });
+            });
+        });
+    </script>
+
+</body>
+
+</html>

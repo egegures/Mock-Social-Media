@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Songs</title>
+</head>
+<body>
+    <h1>Songs</h1>
+    <table id="songsTable">
+        <thead>
+            <tr>
+                <th>Song ID</th>
+                <th>Title</th>
+                <th>Artist</th>
+                <th>URL</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Songs will be loaded here -->
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchSongs();
+        });
+
+        function fetchSongs() {
+            fetch('/api/getSongs')
+            .then(response => response.json())
+            .then(songs => {
+                const tableBody = document.getElementById('songsTable').getElementsByTagName('tbody')[0];
+                songs.forEach(song => {
+                    let row = tableBody.insertRow();
+                    ['id', 'title', 'artist', 'url'].forEach(field => {
+                        let cell = row.insertCell();
+                        let input = document.createElement('input');
+                        input.name = field;
+                        input.value = song[field];
+                        input.disabled = (field === 'id');
+                        cell.appendChild(input);
+                    });
+
+                    let actionCell = row.insertCell();
+                    let saveButton = createButton('Save', () => saveSong(song.id, row));
+                    actionCell.appendChild(saveButton);
+                });
+            })
+            .catch(error => console.error('Error fetching songs:', error));
+        }
+
+        function saveSong(songId, row) {
+            let songData = {};
+            let isValid = true;
+            let inputs = row.getElementsByTagName('input');
+
+            Array.from(inputs).forEach(input => {
+                if (input.name !== 'id' && input.value.trim() === '') {
+                    isValid = false;
+                    alert('Please fill out all fields');
+                    return;
+                }
+                songData[input.name] = input.value;
+            });
+
+            if (!isValid) return;
+
+            fetch('/api/updateSong', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ songId, ...songData })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Song updated successfully');
+                } else {
+                    response.text().then(text => {
+                        alert(`Error updating song: ${text}`);
+                    });
+                }
+            })
+            .catch(error => console.error('Error saving song:', error));
+        }
+
+        function createButton(text, onClick) {
+            let button = document.createElement('button');
+            button.textContent = text;
+            button.onclick = onClick;
+            return button;
+        }
+    </script>
+</body>
+</html>

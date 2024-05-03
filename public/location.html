@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title id="locationTitle">Loading...</title>
+</head>
+<body>
+    <h1 id="locationHeader">Loading...</h1>
+    <div id="postsList">
+        <!-- Posts will be loaded here -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Extract location ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const locationId = urlParams.get('id');
+
+            if (!locationId) {
+                document.getElementById('locationTitle').innerText = 'Location not specified';
+                document.getElementById('locationHeader').innerText = 'Location not specified';
+                return;
+            }
+
+            // Fetch posts for the specified location
+            fetch(`/api/get-posts-by-location?locationId=${locationId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const postsListDiv = document.getElementById('postsList');
+                    const locationName = data.locationName; 
+
+                    document.getElementById('locationTitle').innerText = locationName;
+                    document.getElementById('locationHeader').innerText = locationName;
+
+                    data.posts.forEach(post => {
+                        const postLink = document.createElement('a');
+                        postLink.href = `/post.html?id=${post.id}`;
+                        postLink.innerText = post.title; 
+                        postsListDiv.appendChild(postLink);
+                        postsListDiv.appendChild(document.createElement('br'));
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading posts:', error);
+                    document.getElementById('locationTitle').innerText = 'Error loading posts';
+                    document.getElementById('locationHeader').innerText = 'Error loading posts';
+                });
+        });
+    </script>
+</body>
+</html>

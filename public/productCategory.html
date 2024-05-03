@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Product Category</title>
+</head>
+<body>
+    <h1 id="categoryTitle"></h1>
+    <ul id="listings">
+        <!-- Listings will be loaded here -->
+    </ul>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            const categoryName = params.get('category');
+            
+            if (categoryName) {
+                document.getElementById('categoryTitle').innerText = categoryName + ' Listings';
+                loadListings(categoryName);
+            } else {
+                document.getElementById('categoryTitle').innerText = 'Category not specified';
+                console.error('Category not specified in the URL');
+            }
+        });
+
+        function loadListings(categoryName) {
+            // Fetch listings for the given category
+            fetch(`/api/getListingsByCategory?category=${encodeURIComponent(categoryName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        populateListings(data.listings);
+                    } else {
+                        console.error('Error fetching listings:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function populateListings(listings) {
+            const listingsUl = document.getElementById('listings');
+            listingsUl.innerHTML = ''; // Clear previous listings
+
+            listings.forEach(listing => {
+                const listItem = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = `/product.html?listingId=${listing.id}`;
+                link.innerText = listing.title;
+                listItem.appendChild(link);
+                listingsUl.appendChild(listItem);
+            });
+        }
+    </script>
+</body>
+</html>
